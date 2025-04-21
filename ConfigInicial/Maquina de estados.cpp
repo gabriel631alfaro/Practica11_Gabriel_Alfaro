@@ -1,7 +1,7 @@
 /*
-Previo 11. Animación con maquinas de estados       Alfaro Fragoso José Gabriel 
+Practica  11. Animación con maquinas de estados       Alfaro Fragoso José Gabriel 
 
-Fecha de entrega: 20 de abril de 2025                     317019450
+Fecha de entrega: 25 de abril de 2025                     317019450
 */
 
 #include <iostream>
@@ -106,24 +106,48 @@ float vertices[] = {
 
 glm::vec3 Light1 = glm::vec3(0);
 //variables de animación 
+
+
+// variables de animación 
 float rotBall = 0.0f;
 bool AnimBall = false;
 bool AnimDog = false;
 float rotDog = 0.0f;
-int dogAnim = 0;
+
+enum DogAnimationState {
+	DOG_STOPPED,
+	DOG_WALKING_FORWARD_1,
+	DOG_TURNING_LEFT_1,
+	DOG_WALKING_FORWARD_2,
+	DOG_TURNING_LEFT_2,
+	DOG_WALKING_FORWARD_3,
+	DOG_TURNING_TO_DIAGONAL,
+	DOG_WALKING_DIAGONAL
+};
+
+DogAnimationState currentDogState = DOG_STOPPED;
+float targetRotation = 0.0f;
+float turnProgress = 0.0f;
+const float TURN_DURATION = 1.5f; // Más tiempo para giros más orgánicos
+const float WALK_SPEED = 0.3f;
+const float TURN_SPEED = 60.0f; // Más lento para giros más suaves
+const float MAP_LIMIT = 2.2f;
+const float TURN_THRESHOLD = 0.5f; // Distancia antes del límite para comenzar a girar
+
 float FLegs = 0.0f;
 float RLegs = 0.0f;
 float head = 0.0f;
 float tail = 0.0f;
-glm::vec3 dogPos (0.0f,0.0f,0.0f);
+glm::vec3 dogPos(0.0f, 0.0f, 0.0f);
 float dogRot = 0.0f;
 bool step = false;
 
-// variables para determinar el limite del movimiento en el piso del perrito 
-float floorLimit = 2.2f; // Límite del piso en el eje Z
-glm::vec3 initialDogPos(0.0f, 0.0f, 0.0f); // Posición inicial del perro
-float initialDogRot = 0.0f; // Rotación inicial del perro
-bool dogStopped = false; // Bandera para saber si el perro está detenido
+
+//// variables para determinar el limite del movimiento en el piso del perrito 
+//float floorLimit = 2.2f; // Límite del piso en el eje Z
+//glm::vec3 initialDogPos(0.0f, 0.0f, 0.0f); // Posición inicial del perro
+//float initialDogRot = 0.0f; // Rotación inicial del perro
+//bool dogStopped = false; // Bandera para saber si el perro está detenido
 
 
 // Deltatime
@@ -142,7 +166,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);*/
 
 	// Create a GLFWwindow object that we can use for GLFW's functions
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Previo11. Animacion maquina de estados Gabriel Alfaro ", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Practica 11. Animacion maquina de estados Gabriel Alfaro ", nullptr, nullptr);
 
 	if (nullptr == window)
 	{
@@ -511,28 +535,20 @@ void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mode
 		AnimBall = !AnimBall;
 		
 	}
-	if (keys[GLFW_KEY_B])
-	{
-		dogAnim = 1;
-
-	}
-	if (keys[GLFW_KEY_B]) {
-		if (dogAnim == 0) { // Si no estaba animando
-			// Guardar posición y rotación inicial
-			initialDogPos = dogPos;
-			initialDogRot = dogRot;
-			dogStopped = false;
-			dogAnim = 1;
+	if (key == GLFW_KEY_B && action == GLFW_PRESS) {
+		if (currentDogState == DOG_STOPPED) {
+			// Iniciar animación desde el principio
+			dogPos = glm::vec3(0.0f, 0.0f, 0.0f);
+			dogRot = 0.0f;
+			currentDogState = DOG_WALKING_FORWARD_1;
 		}
-		else if (dogStopped) { // Si estaba detenido
-			// Reiniciar posición y animación
-			dogPos = initialDogPos;
-			dogRot = initialDogRot;
-			dogStopped = false;
-			dogAnim = 1;
+		else {
+			// Detener animación
+			currentDogState = DOG_STOPPED;
 		}
 	}
 }
+
 void Animation() {
 	if (AnimBall) {
 		rotBall += 0.4f;
@@ -542,44 +558,172 @@ void Animation() {
 		rotDog -= 0.6f;
 	}
 
-	// Animación de caminar 
-	if (dogAnim == 1 && !dogStopped) { // Solo animar si no está detenido
-		// estado 1 o cuando esta en falso para variar la rotación 
+	// Animación de caminar (movimiento continuo de patas, cabeza y cola)
+	if (currentDogState != DOG_STOPPED) {
+		float animationSpeed = 0.8f;
+
+		// Aumentar velocidad de animación durante giros
+		if (currentDogState == DOG_TURNING_LEFT_1 ||
+			currentDogState == DOG_TURNING_LEFT_2 ||
+			currentDogState == DOG_TURNING_TO_DIAGONAL) {
+			animationSpeed = 1.2f;
+		}
+
 		if (!step) {
-			RLegs += 0.03f;
-			FLegs += 0.03f;
-			head += 0.03f;
-			tail += 0.03f;
-			//segundo estado 
+			RLegs += animationSpeed * deltaTime * 60.0f;
+			FLegs += animationSpeed * deltaTime * 60.0f;
+			head += 0.5f * animationSpeed * deltaTime * 60.0f;
+			tail += 0.7f * animationSpeed * deltaTime * 60.0f;
 
-			if (RLegs > 15.0f) // condición para que se detenga la rotación 
-				step = true;
+			if (RLegs > 15.0f) step = true;
 		}
-		else { //para dar el siguiente paso (estado 3) 
-			RLegs -= 0.03f;
-			FLegs -= 0.03f;
-			head -= 0.03f;
-			tail -= 0.03f;
-			if (RLegs < -15.0f) // condición para que se detenga la rotación de sentido contrario (estado 4) 
-				step = false;
-		}
+		else {
+			RLegs -= animationSpeed * deltaTime * 60.0f;
+			FLegs -= animationSpeed * deltaTime * 60.0f;
+			head -= 0.5f * animationSpeed * deltaTime * 60.0f;
+			tail -= 0.7f * animationSpeed * deltaTime * 60.0f;
 
-		// Mover al perro hacia adelante
-		dogPos.z += 0.0005;
-
-		// Verificar si ha llegado al límite del piso
-		if (dogPos.z >= floorLimit) {
-			dogStopped = true; // Detener la animación
-			dogPos.z = floorLimit; // Asegurarse de no pasar el límite
-			// Restaurar valores iniciales de rotación
-			RLegs = 0.0f;
-			FLegs = 0.0f;
-			head = 0.0f;
-			tail = 0.0f;
-			dogRot = initialDogRot;
+			if (RLegs < -15.0f) step = false;
 		}
 	}
+
+	// Máquina de estados para el recorrido
+	switch (currentDogState) {
+	case DOG_STOPPED:
+		break;
+
+	case DOG_WALKING_FORWARD_1: {
+		float moveStep = WALK_SPEED * deltaTime;
+		dogPos.z += moveStep;
+
+		// Comenzar giro suave antes del límite
+		if (dogPos.z >= MAP_LIMIT - TURN_THRESHOLD) {
+			targetRotation = 90.0f;
+			turnProgress = 0.0f;
+			currentDogState = DOG_TURNING_LEFT_1;
+		}
+		break;
+	}
+
+	case DOG_TURNING_LEFT_1: {
+		// Giro orgánico: comenzar lento, acelerar y terminar lento
+		turnProgress += deltaTime;
+		float t = glm::clamp(turnProgress / TURN_DURATION, 0.0f, 1.0f);
+		t = t * t * (3.0f - 2.0f * t); // Equivalente a smoothstep
+
+		dogRot = glm::mix(0.0f, targetRotation, t);
+
+		// Continuar movimiento hacia adelante durante el giro
+		float moveStep = WALK_SPEED * deltaTime * 0.5f;
+		dogPos.z += moveStep * (1.0f - t / 2.0f);
+		dogPos.x += moveStep * (t / 2.0f);
+
+		if (turnProgress >= TURN_DURATION) {
+			dogRot = targetRotation;
+			currentDogState = DOG_WALKING_FORWARD_2;
+		}
+		break;
+	}
+
+	case DOG_WALKING_FORWARD_2: {
+		float moveStep = WALK_SPEED * deltaTime;
+		dogPos.x += moveStep;
+
+		if (dogPos.x >= MAP_LIMIT - TURN_THRESHOLD) {
+			targetRotation = 180.0f;
+			turnProgress = 0.0f;
+			currentDogState = DOG_TURNING_LEFT_2;
+		}
+		break;
+	}
+
+	case DOG_TURNING_LEFT_2: {
+		turnProgress += deltaTime;
+		float t = glm::clamp(turnProgress / TURN_DURATION, 0.0f, 1.0f);
+		t = t * t * (3.0f - 2.0f * t); // Equivalente a smoothstep
+
+		dogRot = glm::mix(90.0f, targetRotation, t);
+
+		// Movimiento durante el giro
+		float moveStep = WALK_SPEED * deltaTime * 0.5f;
+		dogPos.x += moveStep * (1.0f - t / 2.0f);
+		dogPos.z -= moveStep * (t / 2.0f);
+
+		if (turnProgress >= TURN_DURATION) {
+			dogRot = targetRotation;
+			currentDogState = DOG_WALKING_FORWARD_3;
+		}
+		break;
+	}
+
+	case DOG_WALKING_FORWARD_3: {
+		float moveStep = WALK_SPEED * deltaTime;
+		dogPos.z -= moveStep;
+
+		if (dogPos.z <= -MAP_LIMIT + TURN_THRESHOLD) {
+			// Calcular ángulo necesario para diagonal (no 90° completo)
+			glm::vec2 toOrigin = glm::normalize(glm::vec2(-dogPos.x, -dogPos.z));
+			targetRotation = glm::degrees(atan2(toOrigin.x, toOrigin.y));
+			turnProgress = 0.0f;
+			currentDogState = DOG_TURNING_TO_DIAGONAL;
+		}
+		break;
+	}
+
+	case DOG_TURNING_TO_DIAGONAL: {
+		turnProgress += deltaTime;
+		float t = glm::clamp(turnProgress / (TURN_DURATION * 0.7f), 0.0f, 1.0f);
+		t = t * t * (3.0f - 2.0f * t); // Equivalente a smoothstep
+
+		// Interpolación angular más inteligente
+		float angleDiff = targetRotation - 180.0f;
+		if (angleDiff > 180.0f) angleDiff -= 360.0f;
+		if (angleDiff < -180.0f) angleDiff += 360.0f;
+
+		dogRot = 180.0f + angleDiff * t;
+
+		// Movimiento suave durante el giro
+		float moveStep = WALK_SPEED * deltaTime * 0.3f;
+		dogPos.z -= moveStep * (1.0f - t);
+		dogPos.x -= moveStep * t;
+
+		if (turnProgress >= (TURN_DURATION * 0.7f)) {
+			dogRot = targetRotation;
+			currentDogState = DOG_WALKING_DIAGONAL;
+		}
+		break;
+	}
+
+	case DOG_WALKING_DIAGONAL: {
+		float moveStep = WALK_SPEED * deltaTime * 1.5f;
+
+		glm::vec2 toOrigin = glm::vec2(-dogPos.x, -dogPos.z);
+		float distance = glm::length(toOrigin);
+
+		if (distance > 0.1f) {
+			glm::vec2 direction = toOrigin / distance;
+			dogPos.x += direction.x * moveStep;
+			dogPos.z += direction.y * moveStep;
+
+			// Ajustar rotación durante el movimiento diagonal
+			float targetAngle = glm::degrees(atan2(direction.x, direction.y));
+			float angleDiff = targetAngle - dogRot;
+			if (angleDiff > 180.0f) angleDiff -= 360.0f;
+			if (angleDiff < -180.0f) angleDiff += 360.0f;
+
+			dogRot += angleDiff * 0.1f; // Suavizar rotación durante el movimiento
+		}
+		else {
+			// Reiniciar ciclo
+			dogPos = glm::vec3(0.0f, 0.0f, 0.0f);
+			dogRot = 0.0f;
+			currentDogState = DOG_WALKING_FORWARD_1;
+		}
+		break;
+	}
+	}
 }
+
 
 void MouseCallback(GLFWwindow *window, double xPos, double yPos)
 {
