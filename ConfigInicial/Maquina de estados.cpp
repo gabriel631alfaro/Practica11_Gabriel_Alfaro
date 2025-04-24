@@ -1,7 +1,7 @@
 /*
 Practica  11. Animación con maquinas de estados       Alfaro Fragoso José Gabriel 
 
-Fecha de entrega: 25 de abril de 2025                     317019450
+Fecha de entrega: 24 de abril de 2025                     317019450
 */
 
 #include <iostream>
@@ -609,8 +609,7 @@ void Animation() {
 		// Giro orgánico: comenzar lento, acelerar y terminar lento
 		turnProgress += deltaTime;
 		float t = glm::clamp(turnProgress / TURN_DURATION, 0.0f, 1.0f);
-		t = t * t * (3.0f - 2.0f * t); // Equivalente a smoothstep
-
+		t = 0.5f * (1 - cos(t * 3.14159265f)); // ease-in-out senoidal
 		dogRot = glm::mix(0.0f, targetRotation, t);
 
 		// Continuar movimiento hacia adelante durante el giro
@@ -640,7 +639,8 @@ void Animation() {
 	case DOG_TURNING_LEFT_2: {
 		turnProgress += deltaTime;
 		float t = glm::clamp(turnProgress / TURN_DURATION, 0.0f, 1.0f);
-		t = t * t * (3.0f - 2.0f * t); // Equivalente a smoothstep
+		t = 0.5f * (1 - cos(t * 3.14159265f)); // ease-in-out senoidal
+
 
 		dogRot = glm::mix(90.0f, targetRotation, t);
 
